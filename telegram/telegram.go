@@ -3,7 +3,7 @@ package telegram
 import (
 	"log"
 
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 type Bot struct {
@@ -18,21 +18,27 @@ func (b *Bot) Start() error {
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
-	updates, err := b.bot.GetUpdatesChan(u)
-	if err != nil {
-		log.Fatal(err)
-	}
+	updates := b.bot.GetUpdatesChan(u)
+
 	for update := range updates {
-		if update.Message == nil { // ignore any non-Message Updates
+		if update.Message == nil || update.CallbackQuery == nil { // ignore any non-Message Updates
 			continue
 		}
 
 		log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
 
-		msg := tgbotapi.NewMessage(update.Message.Chat.ID, update.Message.Text)
-		msg.ReplyToMessageID = update.Message.MessageID
+		if update.Message.IsCommand() {
+			if err := b.handleCommand(update.Message); err != nil {
+				log.Fatal(err)
+				continue
+			}
+		} else {
+			b.handleUnknownMessages(update.Message)
+			continue
+		}
 
-		b.bot.Send(msg)
+		b.handleCallBacks(update.CallbackQuery)
+
 	}
 	return nil
 }
