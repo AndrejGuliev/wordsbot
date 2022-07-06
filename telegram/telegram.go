@@ -2,16 +2,18 @@ package telegram
 
 import (
 	"log"
+	"telegrambot/storage"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 type Bot struct {
-	bot *tgbotapi.BotAPI
+	bot     *tgbotapi.BotAPI
+	storage *storage.WordsBotStorage
 }
 
-func NewBot(bot *tgbotapi.BotAPI) *Bot {
-	return &Bot{bot: bot}
+func NewBot(bot *tgbotapi.BotAPI, storage *storage.WordsBotStorage) *Bot {
+	return &Bot{bot: bot, storage: storage}
 }
 
 func (b *Bot) Start() error {
@@ -21,24 +23,21 @@ func (b *Bot) Start() error {
 	updates := b.bot.GetUpdatesChan(u)
 
 	for update := range updates {
-		if update.Message == nil || update.CallbackQuery == nil { // ignore any non-Message Updates
-			continue
-		}
-
-		log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
-
-		if update.Message.IsCommand() {
-			if err := b.handleCommand(update.Message); err != nil {
-				log.Fatal(err)
-				continue
+		if update.Message != nil {
+			if update.Message.IsCommand() {
+				if err := b.handleCommand(update.Message); err != nil {
+					log.Fatal(err)
+				}
+			} else {
+				b.handleMessages(update.Message)
 			}
-		} else {
-			b.handleUnknownMessages(update.Message)
+			log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
+
+			continue
+		} else if update.CallbackQuery != nil {
+			b.handleCallBacks(update.CallbackQuery)
 			continue
 		}
-
-		b.handleCallBacks(update.CallbackQuery)
-
 	}
 	return nil
 }

@@ -1,10 +1,13 @@
 package main
 
 import (
+	"database/sql"
 	"log"
-
+	"telegrambot/storage"
 	"telegrambot/telegram"
+	"time"
 
+	_ "github.com/go-sql-driver/mysql"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -17,7 +20,17 @@ func main() {
 	bot.Debug = true
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 
-	tBot := telegram.NewBot(bot)
+	db, err := sql.Open("mysql", "telegram_bot:Mq7gJX-4VpzH3@/wordsbot")
+	if err != nil {
+		panic(err)
+	}
+	db.SetConnMaxLifetime(time.Minute * 3)
+	db.SetMaxOpenConns(10)
+	db.SetMaxIdleConns(10)
+
+	storage := storage.NewWordsBotStorage(db)
+
+	tBot := telegram.NewBot(bot, storage)
 	tBot.Start()
 
 }
