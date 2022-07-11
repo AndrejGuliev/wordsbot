@@ -2,6 +2,7 @@ package telegram
 
 import (
 	"fmt"
+	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -46,15 +47,21 @@ func (b *Bot) handleUnknownCommand(message *tgbotapi.Message) error {
 }
 
 func (b *Bot) handleMessages(message *tgbotapi.Message) error {
-	test, err := b.storage.CurrentTest(message.From.ID)
+	position, err := b.storage.CurrentPosition(message.From.ID)
 	if err != nil {
 		return err
 	}
-	switch test {
-	case "":
+	switch position {
+	case 0: //Standart Position
 		return b.handleUnknownMessages(message)
-	default:
+	case 1: //Chosen Test
 		return b.handleUswers(message)
+	case 2: //Test Words Add
+		return b.handleNewWordList(message)
+	case 3: //Test Name Add
+		return b.handleTestName(message)
+	default:
+		return b.handleUnknownMessages(message)
 	}
 }
 
@@ -90,9 +97,9 @@ func (b *Bot) handleUswers(message *tgbotapi.Message) error {
 	if wordID == 0 {
 		msg := tgbotapi.NewMessage(message.Chat.ID, "Тест закончен")
 		b.bot.Send(msg)
-		err = b.storage.ClearTest(message.From.ID)
-		fmt.Println(err)
-		return nil
+		b.storage.SetPosition(message.From.ID, 0)
+		err = b.storage.EndTest(message.From.ID)
+		return err
 	}
 
 	msg := tgbotapi.NewMessage(message.Chat.ID, word)
@@ -112,7 +119,7 @@ func (b *Bot) handleCallBacks(callbackQuery *tgbotapi.CallbackQuery) error {
 	case "Случайные слова":
 		return b.doesntWork(callbackQuery.Message)
 	case "Добавить пакет":
-		return b.doesntWork(callbackQuery.Message)
+		return b.handleAddTestCallback(callbackQuery)
 	default:
 		return b.handlePocketsCallback(callbackQuery)
 	}
@@ -121,27 +128,16 @@ func (b *Bot) handleCallBacks(callbackQuery *tgbotapi.CallbackQuery) error {
 
 func (b *Bot) handlePocketsCallback(callbackQuery *tgbotapi.CallbackQuery) error {
 	text := fmt.Sprintln("Выбран пакет: ", callbackQuery.Data)
+	b.storage.SetPosition(callbackQuery.From.ID, 1)
+	fmt.Println(callbackQuery.Message.From.ID)
 	msg := tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, text)
 	b.bot.Send(msg)
-	b.storage.UserStartTest(callbackQuery.From.ID, callbackQuery.Data)
+	b.storage.SetTest(callbackQuery.From.ID, callbackQuery.Data)
 	_, word, _, _ := b.storage.CurrentWord(callbackQuery.From.ID)
 	msg = tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, word)
 	b.bot.Send(msg)
 	return nil
 
-}
-
-func (b *Bot) makeTestsKeyboard(testNames []string) tgbotapi.InlineKeyboardMarkup {
-	var buttons [][]tgbotapi.InlineKeyboardButton
-	for _, name := range testNames {
-		button := tgbotapi.NewInlineKeyboardButtonData(name, name)
-		buttons = append(buttons, []tgbotapi.InlineKeyboardButton{button})
-	}
-	button := tgbotapi.NewInlineKeyboardButtonData("Добавить пакет", "Добавить пакет")
-	buttons = append(buttons, []tgbotapi.InlineKeyboardButton{button})
-	testsKeyboard := tgbotapi.InlineKeyboardMarkup{buttons}
-
-	return testsKeyboard
 }
 
 func (b *Bot) handleChoosePocketsCallback(callbackQuery *tgbotapi.CallbackQuery) error {
@@ -159,6 +155,53 @@ func (b *Bot) handleChoosePocketsCallback(callbackQuery *tgbotapi.CallbackQuery)
 	msg := tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, text)
 	msg.ReplyMarkup = testsKeyboard
 	_, err = b.bot.Send(msg)
+	return err
+}
+
+func (b *Bot) makeTestsKeyboard(testNames []string) tgbotapi.InlineKeyboardMarkup {
+	var buttons [][]tgbotapi.InlineKeyboardButton
+	for _, name := range testNames {
+		button := tgbotapi.NewInlineKeyboardButtonData(name, name)
+		buttons = append(buttons, []tgbotapi.InlineKeyboardButton{button})
+	}
+	button := tgbotapi.NewInlineKeyboardButtonData("Добавить пакет", "Добавить пакет")
+	buttons = append(buttons, []tgbotapi.InlineKeyboardButton{button})
+	testsKeyboard := tgbotapi.InlineKeyboardMarkup{buttons}
+
+	return testsKeyboard
+}
+
+func (b *Bot) handleAddTestCallback(callbackQuery *tgbotapi.CallbackQuery) error {
+	msg := tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, "Инструкция к добавлению пакета")
+	_, err := b.bot.Send(msg)
+	if err != nil {
+		return err
+	}
+	return b.storage.SetPosition(callbackQuery.From.ID, 2)
+
+}
+
+func (b *Bot) handleNewWordList(message *tgbotapi.Message) error {
+	pairs := strings.Split(message.Text, "\n")
+	if len(pairs) == 1 {
+		fmt.Println("ТЫ ВТИРАЕШЬ МНЕ КАКУЮ-ТО ДИЧЬ")
+	}
+	for _, v := range pairs {
+		pair := strings.Split(v, ":")
+		if len(pair) == 2 {
+			b.storage.AddNewPair(message.From.ID, pair)
+		}
+	}
+	b.storage.SetPosition(message.From.ID, 3)
+	return nil
+}
+
+func (b *Bot) handleTestName(message *tgbotapi.Message) error {
+	err := b.storage.AddNewTestName(message.From.ID, message.Text)
+	fmt.Println(err)
+	b.storage.SetPosition(message.From.ID, 0)
+	msg := tgbotapi.NewMessage(message.Chat.ID, "Пакет добавлен")
+	b.bot.Send(msg)
 	return err
 }
 
