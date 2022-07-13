@@ -2,6 +2,7 @@ package storage
 
 import (
 	"database/sql"
+	"fmt"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -89,7 +90,21 @@ func (s *WordsBotStorage) AddNewPair(userID int64, pair []string) error {
 	return err
 }
 
-func (s *WordsBotStorage) AddNewTestName(userID int64, name string) error {
-	_, err := s.db.Exec("UPDATE words SET test = ? WHERE owner = ? AND test IS NULL", name, userID)
+func (s *WordsBotStorage) AddNewTestName(userID int64, testName string) error {
+	_, err := s.db.Exec("UPDATE words SET test = ? WHERE owner = ? AND test IS NULL", testName, userID)
 	return err
+}
+
+func (s *WordsBotStorage) ValidateName(userID int64, testName string) (bool, error) {
+	var tmp interface{}
+	row := s.db.QueryRow("SELECT test FROM words WHERE owner =? AND test =? LIMIT 1", userID, testName)
+	err := row.Scan(&tmp)
+	if err == sql.ErrNoRows {
+		return false, nil
+	}
+	if err == nil {
+		return true, nil
+	}
+	fmt.Println(err)
+	return false, err
 }

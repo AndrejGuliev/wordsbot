@@ -197,12 +197,18 @@ func (b *Bot) handleNewWordList(message *tgbotapi.Message) error {
 }
 
 func (b *Bot) handleTestName(message *tgbotapi.Message) error {
-	err := b.storage.AddNewTestName(message.From.ID, message.Text)
-	fmt.Println(err)
+	if exist, err := b.storage.ValidateName(message.From.ID, message.Text); err != nil {
+		return err
+	} else if exist {
+		msg := tgbotapi.NewMessage(message.Chat.ID, "Такой пакет уже существует")
+		b.bot.Send(msg)
+		return nil
+	}
+	b.storage.AddNewTestName(message.From.ID, message.Text)
 	b.storage.SetPosition(message.From.ID, 0)
 	msg := tgbotapi.NewMessage(message.Chat.ID, "Пакет добавлен")
 	b.bot.Send(msg)
-	return err
+	return nil
 }
 
 func (b *Bot) doesntWork(message *tgbotapi.Message) error {
