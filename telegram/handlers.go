@@ -172,7 +172,7 @@ func (b *Bot) makeTestsKeyboard(testNames []string) tgbotapi.InlineKeyboardMarku
 }
 
 func (b *Bot) handleAddTestCallback(callbackQuery *tgbotapi.CallbackQuery) error {
-	msg := tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, "Инструкция к добавлению пакета")
+	msg := tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, "Введите пары слов разделенные двоеточием, каждая пара слов должна быть на новой строке")
 	_, err := b.bot.Send(msg)
 	if err != nil {
 		return err
@@ -193,6 +193,8 @@ func (b *Bot) handleNewWordList(message *tgbotapi.Message) error {
 		}
 	}
 	b.storage.SetPosition(message.From.ID, 3)
+	msg := tgbotapi.NewMessage(message.Chat.ID, "Введите название пакета")
+	b.bot.Send(msg)
 	return nil
 }
 
