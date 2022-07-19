@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"log"
+	"os"
 	"telegrambot/storage"
 	"telegrambot/telegram"
 	"time"
@@ -12,15 +13,14 @@ import (
 )
 
 func main() {
-	bot, err := tgbotapi.NewBotAPI("5346332802:AAFdLv75U13NY8YyBMqdxcwknSbqCSWPeCI")
+	bot, err := tgbotapi.NewBotAPI(os.Getenv("botAPIKey"))
 	if err != nil {
 		log.Panic(err)
 	}
 
 	bot.Debug = true
 	log.Printf("Authorized on account %s", bot.Self.UserName)
-
-	db, err := sql.Open("mysql", "telegram_bot:Mq7gJX-4VpzH3@/wordsbot")
+	db, err := sql.Open("mysql", os.Getenv("mysql"))
 	if err != nil {
 		panic(err)
 	}
