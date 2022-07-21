@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 	"os"
+	config "telegrambot/configs"
 	"telegrambot/storage"
 	"telegrambot/telegram"
 	"time"
@@ -30,7 +31,12 @@ func main() {
 
 	storage := storage.NewWordsBotStorage(db)
 
-	tBot := telegram.NewBot(bot, storage)
+	messages, err := config.InitCfg()
+	if err != nil {
+		panic(err)
+	}
+
+	tBot := telegram.NewBot(bot, storage, *messages)
 	tBot.Start()
 
 }

@@ -31,7 +31,7 @@ func (b *Bot) handleCommand(message *tgbotapi.Message) error {
 }
 
 func (b *Bot) handleStartCommand(message *tgbotapi.Message) error {
-	msg := tgbotapi.NewMessage(message.Chat.ID, "Приветственное сообщение")
+	msg := tgbotapi.NewMessage(message.Chat.ID, b.messages.Responses.Start)
 	msg.ReplyMarkup = mainKeyboard
 	b.storage.AddUser(message.From.ID)
 	_, err := b.bot.Send(msg)
@@ -40,7 +40,7 @@ func (b *Bot) handleStartCommand(message *tgbotapi.Message) error {
 }
 
 func (b *Bot) handleUnknownCommand(message *tgbotapi.Message) error {
-	msg := tgbotapi.NewMessage(message.Chat.ID, "Я не знаю такую команду")
+	msg := tgbotapi.NewMessage(message.Chat.ID, b.messages.Errors.UnknownCommand)
 	_, err := b.bot.Send(msg)
 
 	return err
@@ -66,7 +66,7 @@ func (b *Bot) handleMessages(message *tgbotapi.Message) error {
 }
 
 func (b *Bot) handleUnknownMessages(message *tgbotapi.Message) error {
-	msg := tgbotapi.NewMessage(message.Chat.ID, "Сначала начните урок")
+	msg := tgbotapi.NewMessage(message.Chat.ID, b.messages.Errors.StartLesson)
 	msg.ReplyMarkup = mainKeyboard
 	_, err := b.bot.Send(msg)
 
@@ -79,10 +79,10 @@ func (b *Bot) handleUswers(message *tgbotapi.Message) error {
 		return err
 	}
 	if message.Text == translation {
-		msg := tgbotapi.NewMessage(message.Chat.ID, "✅")
+		msg := tgbotapi.NewMessage(message.Chat.ID, b.messages.Responses.WordDone)
 		b.bot.Send(msg)
 	} else {
-		msg := tgbotapi.NewMessage(message.Chat.ID, "❌")
+		msg := tgbotapi.NewMessage(message.Chat.ID, b.messages.Responses.WordMiss)
 		b.bot.Send(msg)
 	}
 
@@ -95,7 +95,7 @@ func (b *Bot) handleUswers(message *tgbotapi.Message) error {
 		return err
 	}
 	if wordID == 0 {
-		msg := tgbotapi.NewMessage(message.Chat.ID, "Тест закончен")
+		msg := tgbotapi.NewMessage(message.Chat.ID, b.messages.Responses.TestDone)
 		b.bot.Send(msg)
 		b.storage.SetPosition(message.From.ID, 0)
 		err = b.storage.EndTest(message.From.ID)
@@ -144,9 +144,9 @@ func (b *Bot) handleChoosePocketsCallback(callbackQuery *tgbotapi.CallbackQuery)
 	var text string
 	testNames, err := b.storage.MakeTestsList(callbackQuery.From.ID)
 	if len(testNames) < 1 {
-		text = "У вас пока нет пакетов"
+		text = b.messages.Responses.NoPackages
 	} else {
-		text = "Выберите пакет"
+		text = b.messages.Responses.CoosePackage
 	}
 	if err != nil {
 		return err
@@ -172,7 +172,7 @@ func (b *Bot) makeTestsKeyboard(testNames []string) tgbotapi.InlineKeyboardMarku
 }
 
 func (b *Bot) handleAddTestCallback(callbackQuery *tgbotapi.CallbackQuery) error {
-	msg := tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, "Введите пары слов разделенные двоеточием, каждая пара слов должна быть на новой строке")
+	msg := tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, b.messages.Responses.InsertPackage)
 	_, err := b.bot.Send(msg)
 	if err != nil {
 		return err
@@ -183,17 +183,24 @@ func (b *Bot) handleAddTestCallback(callbackQuery *tgbotapi.CallbackQuery) error
 
 func (b *Bot) handleNewWordList(message *tgbotapi.Message) error {
 	pairs := strings.Split(message.Text, "\n")
-	if len(pairs) == 1 {
-		fmt.Println("ТЫ ВТИРАЕШЬ МНЕ КАКУЮ-ТО ДИЧЬ")
+	fmt.Print(pairs)
+	if len(pairs) <= 4 {
+		msg := tgbotapi.NewMessage(message.Chat.ID, b.messages.Errors.SmallPackage)
+		b.bot.Send(msg)
+		return nil
 	}
 	for _, v := range pairs {
 		pair := strings.Split(v, ":")
-		if len(pair) == 2 {
+		if len(pair) == 2 && strings.TrimSpace(pair[0]) != "" && strings.TrimSpace(pair[1]) != "" {
 			b.storage.AddNewPair(message.From.ID, pair)
+		} else {
+			msg := tgbotapi.NewMessage(message.Chat.ID, b.messages.Errors.EmptyStrings)
+			b.bot.Send(msg)
+			return nil
 		}
 	}
 	b.storage.SetPosition(message.From.ID, 3)
-	msg := tgbotapi.NewMessage(message.Chat.ID, "Введите название пакета")
+	msg := tgbotapi.NewMessage(message.Chat.ID, b.messages.Responses.InsertPackageName)
 	b.bot.Send(msg)
 	return nil
 }
@@ -202,19 +209,19 @@ func (b *Bot) handleTestName(message *tgbotapi.Message) error {
 	if exist, err := b.storage.ValidateName(message.From.ID, message.Text); err != nil {
 		return err
 	} else if exist {
-		msg := tgbotapi.NewMessage(message.Chat.ID, "Такой пакет уже существует")
+		msg := tgbotapi.NewMessage(message.Chat.ID, b.messages.Errors.AlredyExist)
 		b.bot.Send(msg)
 		return nil
 	}
 	b.storage.AddNewTestName(message.From.ID, message.Text)
 	b.storage.SetPosition(message.From.ID, 0)
-	msg := tgbotapi.NewMessage(message.Chat.ID, "Пакет добавлен")
+	msg := tgbotapi.NewMessage(message.Chat.ID, b.messages.Responses.AddedPackage)
 	b.bot.Send(msg)
 	return nil
 }
 
 func (b *Bot) doesntWork(message *tgbotapi.Message) error {
-	msg := tgbotapi.NewMessage(message.Chat.ID, "Пока не работает")
+	msg := tgbotapi.NewMessage(message.Chat.ID, b.messages.Errors.DoesntWork)
 	_, err := b.bot.Send(msg)
 	return err
 }

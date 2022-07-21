@@ -3,6 +3,7 @@ package storage
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -86,7 +87,7 @@ func (s *WordsBotStorage) MakeTestsList(userID int64) ([]string, error) {
 }
 
 func (s *WordsBotStorage) AddNewPair(userID int64, pair []string) error {
-	_, err := s.db.Exec("INSERT INTO words (word, translation, owner) VALUES(?, ?, ?)", pair[0], pair[1], userID)
+	_, err := s.db.Exec("INSERT INTO words (word, translation, owner) VALUES(?, ?, ?)", strings.TrimSpace(pair[0]), strings.TrimSpace(pair[1]), userID)
 	return err
 }
 

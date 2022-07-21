@@ -2,18 +2,20 @@ package telegram
 
 import (
 	"log"
+	config "telegrambot/configs"
 	"telegrambot/storage"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 type Bot struct {
-	bot     *tgbotapi.BotAPI
-	storage *storage.WordsBotStorage
+	bot      *tgbotapi.BotAPI
+	storage  *storage.WordsBotStorage
+	messages config.Messages
 }
 
-func NewBot(bot *tgbotapi.BotAPI, storage *storage.WordsBotStorage) *Bot {
-	return &Bot{bot: bot, storage: storage}
+func NewBot(bot *tgbotapi.BotAPI, storage *storage.WordsBotStorage, messages config.Messages) *Bot {
+	return &Bot{bot: bot, storage: storage, messages: messages}
 }
 
 func (b *Bot) Start() error {
