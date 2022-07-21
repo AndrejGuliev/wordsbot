@@ -166,7 +166,7 @@ func (b *Bot) makeTestsKeyboard(testNames []string) tgbotapi.InlineKeyboardMarku
 	}
 	button := tgbotapi.NewInlineKeyboardButtonData("Добавить пакет", "Добавить пакет")
 	buttons = append(buttons, []tgbotapi.InlineKeyboardButton{button})
-	testsKeyboard := tgbotapi.InlineKeyboardMarkup{buttons}
+	testsKeyboard := tgbotapi.InlineKeyboardMarkup{InlineKeyboard: buttons}
 
 	return testsKeyboard
 }
