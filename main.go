@@ -4,10 +4,10 @@ import (
 	"database/sql"
 	"log"
 	"os"
-	config "telegrambot/configs"
-	"telegrambot/storage"
-	"telegrambot/telegram"
 	"time"
+	"wordsbot/pkg/config"
+	"wordsbot/pkg/storage"
+	"wordsbot/pkg/telegram"
 
 	_ "github.com/go-sql-driver/mysql"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
