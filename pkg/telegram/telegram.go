@@ -2,8 +2,9 @@ package telegram
 
 import (
 	"log"
-	"wordsbot/pkg/config"
-	"wordsbot/pkg/storage"
+
+	"github.com/AndrejGuliev/wordsbot/pkg/config"
+	"github.com/AndrejGuliev/wordsbot/pkg/storage"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )

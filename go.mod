@@ -1,4 +1,4 @@
-module wordsbot
+module github.com/AndrejGuliev/wordsbot
 
 go 1.18
 
