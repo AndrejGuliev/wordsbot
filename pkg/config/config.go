@@ -12,15 +12,16 @@ type Messages struct {
 }
 
 type Responses struct {
-	Start             string `mapstructure:"start"`
-	WordDone          string `mapstructure:"word_done"`
-	WordMiss          string `mapstructure:"word_miss"`
-	TestDone          string `mapstructure:"test_done"`
-	NoPackages        string `mapstructure:"no_packages"`
-	CoosePackage      string `mapstructure:"choose_package"`
-	InsertPackage     string `mapstructure:"insert_package"`
-	InsertPackageName string `mapstructure:"insert_package_name"`
-	AddedPackage      string `mapstructure:"added_package"`
+	Start                 string `mapstructure:"start"`
+	WordDone              string `mapstructure:"word_done"`
+	WordMiss              string `mapstructure:"word_miss"`
+	TestDone              string `mapstructure:"test_done"`
+	NoPackages            string `mapstructure:"no_packages"`
+	ChoosePackageToStart  string `mapstructure:"choose_package_to_start"`
+	ChoosePackageToDelete string `mapstructure:"choose_package_to_delete"`
+	InsertPackage         string `mapstructure:"insert_package"`
+	InsertPackageName     string `mapstructure:"insert_package_name"`
+	AddedPackage          string `mapstructure:"package_added"`
 }
 
 type Errors struct {

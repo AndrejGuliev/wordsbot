@@ -25,22 +25,34 @@ func (s *WordsBotStorage) CurrentWord(userID int64) (int, string, string, error)
 	var wordID int
 	var word, translation string
 	row := s.db.QueryRow("SELECT u.current_word, w.translation, w.word FROM users u inner join words w on u.current_word = w.word_id where telegram_id =?", userID)
-	err := row.Scan(&wordID, &translation, &word)
+	err := row.Scan(&wordID, &word, &translation)
 	if err == sql.ErrNoRows {
 		return 0, "", "", nil
 	}
 	return wordID, word, translation, err
 }
 
-func (s *WordsBotStorage) EncCurrentWordNum(userID int64, currentWord int) error {
-	_, err := s.db.Exec("UPDATE users SET current_word = (SELECT word_id from words WHERE word_id >? AND test = (SELECT test FROM words WHERE word_id = ?) LIMIT 1) WHERE telegram_id = ?", currentWord, currentWord, userID)
+func (s *WordsBotStorage) EncCurrentWordNum(userID int64) error {
+	_, err := s.db.Exec("UPDATE users as u1 JOIN users as u2 ON u2.telegram_id = ? SET u1.current_word = (SELECT word_id from words WHERE word_id >u2.current_word AND test =u2.current_test LIMIT 1)WHERE u1.telegram_id =?", userID, userID)
+	return err
+}
+
+func (s *WordsBotStorage) CurrentAnswNum(userID int64) (int, error) {
+	var CurrentAnswNum int
+	row := s.db.QueryRow("SELECT current_answ_num FROM users WHERE telegram_id = ?", userID)
+	err := row.Scan(&CurrentAnswNum)
+	return CurrentAnswNum, err
+}
+
+func (s *WordsBotStorage) EncCurrentAnswNum(userID int64) error {
+	_, err := s.db.Exec("UPDATE users SET current_answ_num = current_answ_num + 1 WHERE telegram_id = ?", userID)
 	return err
 }
 
 func (s *WordsBotStorage) SetTest(userID int64, test string) error {
 	_, err := s.db.Exec("UPDATE users SET current_test = ?, current_word = (SELECT word_id FROM words WHERE word_id>0 AND test=? LIMIT 1) WHERE telegram_id = ?", test, test, userID)
+	fmt.Println(err)
 	return err
-
 }
 
 func (s *WordsBotStorage) CurrentTest(userID int64) (string, error) {
@@ -51,7 +63,7 @@ func (s *WordsBotStorage) CurrentTest(userID int64) (string, error) {
 }
 
 func (s *WordsBotStorage) EndTest(userID int64) error {
-	_, err := s.db.Exec("UPDATE users SET current_test = default WHERE telegram_id =?", userID)
+	_, err := s.db.Exec("UPDATE users SET current_test = default, current_answ_num = default WHERE telegram_id =?", userID)
 	return err
 }
 
@@ -108,4 +120,21 @@ func (s *WordsBotStorage) ValidateName(userID int64, testName string) (bool, err
 	}
 	fmt.Println(err)
 	return false, err
+}
+
+func (s *WordsBotStorage) TestIdRange(userID int64, testName string) (int, int, error) {
+	var start, end int
+	row := s.db.QueryRow("SELECT (SELECT MIN(word_id) FROM words WHERE owner =? AND test =?), (SELECT MAX(word_id) FROM words WHERE owner =? AND test =?)", userID, testName, userID, testName)
+	err := row.Scan(&start, &end)
+	return start, end, err
+}
+
+func (s *WordsBotStorage) SetRandomWord(userID int64, wordID int) error {
+	_, err := s.db.Exec("UPDATE users SET current_word = (SELECT word_id FROM words WHERE word_id>=? LIMIT 1) WHERE telegram_id = ?", wordID, userID)
+	return err
+}
+
+func (s *WordsBotStorage) DeletePocket(userID int64, testName string) error {
+	_, err := s.db.Exec("DELETE FROM words WHERE owner =? AND test=? ", userID, testName)
+	return err
 }
