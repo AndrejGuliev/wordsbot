@@ -30,6 +30,7 @@ var pocketsMenuKeyboard = tgbotapi.NewInlineKeyboardMarkup(
 	tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Выбрать пакет", "Выбрать пакет")),
 	tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Добавить пакет", "Добавить пакет")),
 	tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("Удалить пакет", "Удалить пакет")),
+	tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData("<<", "<<")),
 )
 
 func (b *Bot) handleCommand(message *tgbotapi.Message) error {
@@ -48,8 +49,8 @@ func (b *Bot) handleStartCommand(message *tgbotapi.Message) error {
 	msg := tgbotapi.NewMessage(message.Chat.ID, b.messages.Responses.Start)
 	msg.ReplyMarkup = mainKeyboard
 	b.storage.AddUser(message.From.ID)
-	_, err := b.bot.Send(msg)
-
+	messageConfig, err := b.bot.Send(msg)
+	b.storage.SetMenuMessageID(message.From.ID, messageConfig.MessageID)
 	return err
 }
 
@@ -61,7 +62,7 @@ func (b *Bot) handleUnknownCommand(message *tgbotapi.Message) error {
 }
 
 func (b *Bot) handleMessages(message *tgbotapi.Message) error {
-	position, err := b.storage.CurrentPosition(message.From.ID)
+	position, err := b.storage.GetCurrentPosition(message.From.ID)
 	if err != nil {
 		return err
 	}
@@ -84,7 +85,8 @@ func (b *Bot) handleMessages(message *tgbotapi.Message) error {
 func (b *Bot) handleUnknownMessages(message *tgbotapi.Message) error {
 	msg := tgbotapi.NewMessage(message.Chat.ID, b.messages.Errors.StartLesson)
 	msg.ReplyMarkup = mainKeyboard
-	_, err := b.bot.Send(msg)
+	messageConfig, err := b.bot.Send(msg)
+	b.storage.SetMenuMessageID(message.From.ID, messageConfig.MessageID)
 
 	return err
 }
@@ -100,7 +102,7 @@ func (b *Bot) handleUswers(message *tgbotapi.Message) error {
 	if err != nil {
 		return err
 	}
-	wordID, word, _, err := b.storage.CurrentWord(message.From.ID)
+	wordID, word, _, err := b.storage.GetCurrentWord(message.From.ID)
 	if err != nil {
 		return err
 	}
@@ -134,6 +136,8 @@ func (b *Bot) handleCallBacks(callbackQuery *tgbotapi.CallbackQuery) error {
 		return b.stopTest(callbackQuery.Message.Chat.ID, callbackQuery.From.ID)
 	case "Выбрать пакет":
 		return b.handleChoosePocketsCallback(callbackQuery, 5) // Position 5 - Choose Pocket
+	case "<<":
+		return b.handleBackButtonCallback(callbackQuery)
 	default:
 		return b.handlePocketsCallback(callbackQuery)
 	}
@@ -143,17 +147,45 @@ func (b *Bot) handleCallBacks(callbackQuery *tgbotapi.CallbackQuery) error {
 func (b *Bot) handleRandomWordsCallback(callbackQuery *tgbotapi.CallbackQuery) error {
 	b.storage.SetPosition(callbackQuery.From.ID, 4)
 	b.nextRandomWord(callbackQuery.From.ID)
-	_, word, _, _ := b.storage.CurrentWord(callbackQuery.From.ID)
+	_, word, _, _ := b.storage.GetCurrentWord(callbackQuery.From.ID)
 	msg := tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, word)
 	_, err := b.bot.Send(msg)
 	return err
 
 }
 func (b *Bot) handlePocketsMenuCallack(callbackQuery *tgbotapi.CallbackQuery) error {
-	msg := tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, "text")
-	msg.ReplyMarkup = pocketsMenuKeyboard
-	b.bot.Send(msg)
-	return nil
+	MenuMessageID, err := b.storage.GetMenuMessageID(callbackQuery.From.ID)
+	if err != nil {
+		return err
+	}
+	reply := tgbotapi.NewEditMessageReplyMarkup(callbackQuery.Message.Chat.ID, MenuMessageID, pocketsMenuKeyboard)
+	_, err = b.bot.Send(reply)
+	return err
+}
+
+func (b *Bot) handleBackButtonCallback(callbackQuery *tgbotapi.CallbackQuery) error {
+	position, err := b.storage.GetCurrentPosition(callbackQuery.From.ID)
+	if err != nil {
+		return err
+	}
+	if position == 5 || position == 6 {
+		if err := b.handlePocketsMenuCallack(callbackQuery); err != nil {
+			return err
+		}
+		return b.storage.SetPosition(callbackQuery.From.ID, 0)
+	} else {
+		return b.backToMainMenu(callbackQuery)
+	}
+}
+
+func (b *Bot) backToMainMenu(callbackQuery *tgbotapi.CallbackQuery) error {
+	MenuMessageID, err := b.storage.GetMenuMessageID(callbackQuery.From.ID)
+	if err != nil {
+		return err
+	}
+	reply := tgbotapi.NewEditMessageReplyMarkup(callbackQuery.Message.Chat.ID, MenuMessageID, mainKeyboard)
+	_, err = b.bot.Send(reply)
+	return err
 }
 
 func (b *Bot) handleStartPocketCallback(callbackQuery *tgbotapi.CallbackQuery) error {
@@ -163,15 +195,14 @@ func (b *Bot) handleStartPocketCallback(callbackQuery *tgbotapi.CallbackQuery) e
 	msg := tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, text)
 	b.bot.Send(msg)
 	b.storage.SetTest(callbackQuery.From.ID, callbackQuery.Data)
-	_, word, _, _ := b.storage.CurrentWord(callbackQuery.From.ID)
+	_, word, _, _ := b.storage.GetCurrentWord(callbackQuery.From.ID)
 	msg = tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, word)
-	b.bot.Send(msg)
-	return nil
-
+	_, err := b.bot.Send(msg)
+	return err
 }
 
 func (b *Bot) handlePocketsCallback(callbackQuery *tgbotapi.CallbackQuery) error {
-	position, err := b.storage.CurrentPosition(callbackQuery.From.ID)
+	position, err := b.storage.GetCurrentPosition(callbackQuery.From.ID)
 	if err != nil {
 		return err
 	}
@@ -180,8 +211,9 @@ func (b *Bot) handlePocketsCallback(callbackQuery *tgbotapi.CallbackQuery) error
 		return b.handleStartPocketCallback(callbackQuery)
 	case 6:
 		return b.handleDeletePocketCallback(callbackQuery)
+	default:
+		return b.backToMainMenu(callbackQuery)
 	}
-	return nil
 }
 
 func (b *Bot) handleDeletePocketCallback(callbackQuery *tgbotapi.CallbackQuery) error {
@@ -199,13 +231,17 @@ func (b *Bot) handleChoosePocketsCallback(callbackQuery *tgbotapi.CallbackQuery,
 	}
 	if len(testNames) < 1 {
 		msg := tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, b.messages.Responses.NoPackages)
+		b.storage.SetPosition(callbackQuery.From.ID, 1)
 		_, err = b.bot.Send(msg)
 		return err
 	} else {
-		msg := tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, b.messages.Responses.ChoosePackageToStart)
 		testsKeyboard := b.makeTestsKeyboard(testNames)
-		msg.ReplyMarkup = testsKeyboard
-		_, err = b.bot.Send(msg)
+		MenuMessageID, err := b.storage.GetMenuMessageID(callbackQuery.From.ID)
+		if err != nil {
+			return err
+		}
+		reply := tgbotapi.NewEditMessageReplyMarkup(callbackQuery.Message.Chat.ID, MenuMessageID, testsKeyboard)
+		_, err = b.bot.Send(reply)
 		return err
 	}
 }
@@ -216,6 +252,8 @@ func (b *Bot) makeTestsKeyboard(testNames []string) tgbotapi.InlineKeyboardMarku
 		button := tgbotapi.NewInlineKeyboardButtonData(name, name)
 		buttons = append(buttons, []tgbotapi.InlineKeyboardButton{button})
 	}
+	button := tgbotapi.NewInlineKeyboardButtonData("<<", "<<")
+	buttons = append(buttons, []tgbotapi.InlineKeyboardButton{button})
 	testsKeyboard := tgbotapi.InlineKeyboardMarkup{InlineKeyboard: buttons}
 
 	return testsKeyboard
@@ -236,8 +274,8 @@ func (b *Bot) handleNewWordList(message *tgbotapi.Message) error {
 	fmt.Print(pairs)
 	if len(pairs) <= 4 {
 		msg := tgbotapi.NewMessage(message.Chat.ID, b.messages.Errors.SmallPackage)
-		b.bot.Send(msg)
-		return nil
+		_, err := b.bot.Send(msg)
+		return err
 	}
 	for _, v := range pairs {
 		pair := strings.Split(v, ":")
@@ -245,14 +283,14 @@ func (b *Bot) handleNewWordList(message *tgbotapi.Message) error {
 			b.storage.AddNewPair(message.From.ID, pair)
 		} else {
 			msg := tgbotapi.NewMessage(message.Chat.ID, b.messages.Errors.EmptyStrings)
-			b.bot.Send(msg)
-			return nil
+			_, err := b.bot.Send(msg)
+			return err
 		}
 	}
 	b.storage.SetPosition(message.From.ID, 3)
 	msg := tgbotapi.NewMessage(message.Chat.ID, b.messages.Responses.InsertPackageName)
-	b.bot.Send(msg)
-	return nil
+	_, err := b.bot.Send(msg)
+	return err
 }
 
 func (b *Bot) handleTestName(message *tgbotapi.Message) error {
@@ -260,18 +298,12 @@ func (b *Bot) handleTestName(message *tgbotapi.Message) error {
 		return err
 	} else if exist {
 		msg := tgbotapi.NewMessage(message.Chat.ID, b.messages.Errors.AlredyExist)
-		b.bot.Send(msg)
-		return nil
+		_, err := b.bot.Send(msg)
+		return err
 	}
 	b.storage.AddNewTestName(message.From.ID, message.Text)
 	b.storage.SetPosition(message.From.ID, 0)
 	msg := tgbotapi.NewMessage(message.Chat.ID, b.messages.Responses.AddedPackage)
-	b.bot.Send(msg)
-	return nil
-}
-
-func (b *Bot) doesntWork(message *tgbotapi.Message) error {
-	msg := tgbotapi.NewMessage(message.Chat.ID, b.messages.Errors.DoesntWork)
 	_, err := b.bot.Send(msg)
 	return err
 }
@@ -295,14 +327,11 @@ func (b *Bot) nextRandomWord(userID int64) error {
 	}
 	wordID := min + rand.Intn(max-min+1)
 	err = b.storage.SetRandomWord(userID, wordID)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func (b *Bot) checkUswers(message *tgbotapi.Message) (tgbotapi.MessageConfig, error) {
-	_, _, translation, err := b.storage.CurrentWord(message.From.ID)
+	_, _, translation, err := b.storage.GetCurrentWord(message.From.ID)
 	if strings.EqualFold(message.Text, translation) {
 		b.storage.EncCurrentAnswNum(message.From.ID)
 		msg := tgbotapi.NewMessage(message.Chat.ID, b.messages.Responses.WordDone)
@@ -321,14 +350,14 @@ func (b *Bot) handleRandomUswers(message *tgbotapi.Message) error {
 		return err
 	}
 	msg.ReplyMarkup = randomWordsKeyboard
-	b.bot.Send(msg)
-	return nil
+	_, err = b.bot.Send(msg)
+	return err
 }
 
 func (b *Bot) handleNextCallback(callbackQuery *tgbotapi.CallbackQuery) error {
 	b.nextRandomWord(callbackQuery.From.ID)
-	b.storage.CurrentWord(callbackQuery.From.ID)
-	_, word, _, err := b.storage.CurrentWord(callbackQuery.From.ID)
+	b.storage.GetCurrentWord(callbackQuery.From.ID)
+	_, word, _, err := b.storage.GetCurrentWord(callbackQuery.From.ID)
 	if err != nil {
 		return err
 	}
@@ -339,16 +368,26 @@ func (b *Bot) handleNextCallback(callbackQuery *tgbotapi.CallbackQuery) error {
 }
 
 func (b *Bot) stopTest(chatID int64, userID int64) error {
-	currentAnswNum, err := b.storage.CurrentAnswNum(userID)
+	currentAnswNum, err := b.storage.GetCurrentAnswNum(userID)
 	if err != nil {
 		fmt.Println(err)
 		return err
 	}
 	b.storage.SetPosition(userID, 0)
 	err = b.storage.EndTest(userID)
+	if err != nil {
+		return err
+	}
 	text := fmt.Sprintf("%s %d", b.messages.Responses.TestDone, currentAnswNum)
 	msg := tgbotapi.NewMessage(chatID, text)
 	msg.ReplyMarkup = mainKeyboard
-	b.bot.Send(msg)
+	messageConfig, err := b.bot.Send(msg)
+	b.storage.SetMenuMessageID(userID, messageConfig.MessageID)
 	return err
 }
+
+/*func (b *Bot) doesntWork(message *tgbotapi.Message) error {
+	msg := tgbotapi.NewMessage(message.Chat.ID, b.messages.Errors.DoesntWork)
+	_, err := b.bot.Send(msg)
+	return err
+}*/

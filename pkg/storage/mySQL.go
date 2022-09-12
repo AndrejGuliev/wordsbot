@@ -21,7 +21,7 @@ func (s *WordsBotStorage) AddUser(userID int64) error {
 	return err
 }
 
-func (s *WordsBotStorage) CurrentWord(userID int64) (int, string, string, error) {
+func (s *WordsBotStorage) GetCurrentWord(userID int64) (int, string, string, error) {
 	var wordID int
 	var word, translation string
 	row := s.db.QueryRow("SELECT u.current_word, w.translation, w.word FROM users u inner join words w on u.current_word = w.word_id where telegram_id =?", userID)
@@ -37,7 +37,7 @@ func (s *WordsBotStorage) EncCurrentWordNum(userID int64) error {
 	return err
 }
 
-func (s *WordsBotStorage) CurrentAnswNum(userID int64) (int, error) {
+func (s *WordsBotStorage) GetCurrentAnswNum(userID int64) (int, error) {
 	var CurrentAnswNum int
 	row := s.db.QueryRow("SELECT current_answ_num FROM users WHERE telegram_id = ?", userID)
 	err := row.Scan(&CurrentAnswNum)
@@ -72,7 +72,7 @@ func (s *WordsBotStorage) SetPosition(userID int64, pos int) error {
 	return err
 }
 
-func (s *WordsBotStorage) CurrentPosition(userID int64) (int, error) {
+func (s *WordsBotStorage) GetCurrentPosition(userID int64) (int, error) {
 	var currentPosition int
 	row := s.db.QueryRow("SELECT position FROM users WHERE telegram_id = ?", userID)
 	err := row.Scan(&currentPosition)
@@ -136,5 +136,17 @@ func (s *WordsBotStorage) SetRandomWord(userID int64, wordID int) error {
 
 func (s *WordsBotStorage) DeletePocket(userID int64, testName string) error {
 	_, err := s.db.Exec("DELETE FROM words WHERE owner =? AND test=? ", userID, testName)
+	return err
+}
+
+func (s *WordsBotStorage) GetMenuMessageID(userID int64) (int, error) {
+	var MenuMessageID int
+	row := s.db.QueryRow("SELECT menu_message_id FROM users WHERE telegram_id = ?", userID)
+	err := row.Scan(&MenuMessageID)
+	return MenuMessageID, err
+}
+
+func (s *WordsBotStorage) SetMenuMessageID(userID int64, messageID int) error {
+	_, err := s.db.Exec("UPDATE users SET menu_message_id=? WHERE telegram_id = ?", messageID, userID)
 	return err
 }
