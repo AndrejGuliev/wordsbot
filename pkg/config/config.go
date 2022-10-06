@@ -42,10 +42,6 @@ func InitCfg() (*Messages, error) {
 	}
 
 	var messages Messages
-	/*if err := viper.Unmarshal(&messages); err != nil {
-		fmt.Println(err)
-		return nil, err
-	}*/
 
 	if err := viper.UnmarshalKey("messages.responses", &messages.Responses); err != nil {
 		fmt.Println(err)

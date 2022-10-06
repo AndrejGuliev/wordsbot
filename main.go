@@ -24,17 +24,21 @@ func main() {
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 	db, err := sql.Open("mysql", os.Getenv("mysql"))
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 	db.SetConnMaxLifetime(time.Minute * 3)
 	db.SetMaxOpenConns(10)
 	db.SetMaxIdleConns(10)
+	if err := db.Ping(); err != nil {
+		log.Panic(err)
+	}
+	log.Println("Connected to DB")
 
 	storage := storage.NewWordsBotStorage(db)
 
 	messages, err := config.InitCfg()
 	if err != nil {
-		panic(err)
+		log.Panic(err)
 	}
 
 	tBot := telegram.NewBot(bot, storage, *messages)

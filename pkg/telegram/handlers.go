@@ -146,13 +146,13 @@ func (b *Bot) handleCallBacks(callbackQuery *tgbotapi.CallbackQuery) error {
 
 func (b *Bot) handleRandomWordsCallback(callbackQuery *tgbotapi.CallbackQuery) error {
 	b.storage.SetPosition(callbackQuery.From.ID, 4)
-	b.nextRandomWord(callbackQuery.From.ID)
+	b.nextRandomWord(callbackQuery)
 	_, word, _, _ := b.storage.GetCurrentWord(callbackQuery.From.ID)
 	msg := tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, word)
 	_, err := b.bot.Send(msg)
 	return err
-
 }
+
 func (b *Bot) handlePocketsMenuCallack(callbackQuery *tgbotapi.CallbackQuery) error {
 	MenuMessageID, err := b.storage.GetMenuMessageID(callbackQuery.From.ID)
 	if err != nil {
@@ -308,25 +308,26 @@ func (b *Bot) handleTestName(message *tgbotapi.Message) error {
 	return err
 }
 
-func (b *Bot) nextRandomWord(userID int64) error {
-	fmt.Println(userID)
-	testNames, err := b.storage.MakeTestsList(userID)
-	if len(testNames) < 1 {
-		return err
-	}
+func (b *Bot) nextRandomWord(callbackQuery *tgbotapi.CallbackQuery) error {
+	testNames, err := b.storage.MakeTestsList(callbackQuery.From.ID)
 	if err != nil {
 		return err
 	}
-	fmt.Println(testNames)
+	if len(testNames) < 1 {
+		msg := tgbotapi.NewMessage(callbackQuery.Message.Chat.ID, b.messages.Responses.NoPackages)
+		b.storage.SetPosition(callbackQuery.From.ID, 0)
+		_, err = b.bot.Send(msg)
+		return err
+	}
 	rand.Seed(time.Now().Unix())
 	fmt.Println(len(testNames))
 	randTest := testNames[rand.Intn(len(testNames))]
-	min, max, err := b.storage.TestIdRange(userID, randTest)
+	min, max, err := b.storage.TestIdRange(callbackQuery.From.ID, randTest)
 	if err != nil {
 		return err
 	}
 	wordID := min + rand.Intn(max-min+1)
-	err = b.storage.SetRandomWord(userID, wordID)
+	err = b.storage.SetRandomWord(callbackQuery.From.ID, wordID)
 	return err
 }
 
@@ -355,7 +356,7 @@ func (b *Bot) handleRandomUswers(message *tgbotapi.Message) error {
 }
 
 func (b *Bot) handleNextCallback(callbackQuery *tgbotapi.CallbackQuery) error {
-	b.nextRandomWord(callbackQuery.From.ID)
+	b.nextRandomWord(callbackQuery)
 	b.storage.GetCurrentWord(callbackQuery.From.ID)
 	_, word, _, err := b.storage.GetCurrentWord(callbackQuery.From.ID)
 	if err != nil {
