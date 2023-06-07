@@ -1,5 +1,13 @@
-# Words Bot
-Данный бот предназначен для помощи в изучении иностранных слов. Пользователи могут проходить тесты на основании добавленных или пакетов слов.
+# wordsbot
+
+wordsbot is a Telegram bot designed for learning and memorizing words and their translations.
+
+## Features
+
+- Choose from a selection of word packages to study
+- Take tests to practice word memorization
+- Add and remove word packages
+- Randomly generate words for revision
 
 
 
