@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/AndrejGuliev/wordsbot/pkg/config"
-	"github.com/AndrejGuliev/wordsbot/pkg/storage"
+	"github.com/AndrejGuliev/wordsbot/pkg/storage/mysql"
 	"github.com/AndrejGuliev/wordsbot/pkg/telegram"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -34,12 +34,14 @@ func main() {
 	}
 	log.Println("Connected to DB")
 
-	storage := storage.NewWordsBotStorage(db)
+	storage := mysql.NewWordsBotStorage(db)
 
 	messages, err := config.InitCfg()
 	if err != nil {
 		log.Panic(err)
 	}
+
+	log.Println("Config initialized")
 
 	tBot := telegram.NewBot(bot, storage, *messages)
 	tBot.Start()

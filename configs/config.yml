@@ -11,6 +11,8 @@ messages:
     insert_package_name: "Введите название пакета"
     package_added: "Пакет добавлен"
     package_deleted: "Пакет удален"
+    chosed_package: "Выбран пакет"
+    deleted_package: "Удалён пакет"
   errors:
     unknown_command: "Я не знаю такую команду"
     start_lesson: "Сначала начните урок"

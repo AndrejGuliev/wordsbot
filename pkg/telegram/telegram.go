@@ -11,11 +11,11 @@ import (
 
 type Bot struct {
 	bot      *tgbotapi.BotAPI
-	storage  *storage.WordsBotStorage
+	storage  storage.Storage
 	messages config.Messages
 }
 
-func NewBot(bot *tgbotapi.BotAPI, storage *storage.WordsBotStorage, messages config.Messages) *Bot {
+func NewBot(bot *tgbotapi.BotAPI, storage storage.Storage, messages config.Messages) *Bot {
 	return &Bot{bot: bot, storage: storage, messages: messages}
 }
 
@@ -29,16 +29,22 @@ func (b *Bot) Start() error {
 		if update.Message != nil {
 			if update.Message.IsCommand() {
 				if err := b.handleCommand(update.Message); err != nil {
-					log.Fatal(err)
+					log.Printf("Error handling command: %v", err)
 				}
 			} else {
-				b.handleMessages(update.Message)
+				if err := b.handleMessages(update.Message); err != nil {
+					log.Printf("Error handling message: %v", err)
+				}
+
 			}
 			log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
 
 			continue
 		} else if update.CallbackQuery != nil {
-			b.handleCallBacks(update.CallbackQuery)
+			if err := b.handleCallBacks(update.CallbackQuery); err != nil {
+				log.Printf("Error handling callback: %v", err)
+			}
+
 			continue
 		}
 	}

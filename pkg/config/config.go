@@ -22,6 +22,8 @@ type Responses struct {
 	InsertPackage         string `mapstructure:"insert_package"`
 	InsertPackageName     string `mapstructure:"insert_package_name"`
 	AddedPackage          string `mapstructure:"package_added"`
+	ChosedPackage         string `mapstructure:"chosed_package"`
+	DeletedPackage        string `mapstructure:"deleted_package"`
 }
 
 type Errors struct {
@@ -29,7 +31,7 @@ type Errors struct {
 	StartLesson    string `mapstructure:"start_lesson"`
 	SmallPackage   string `mapstructure:"small_package"`
 	EmptyStrings   string `mapstructure:"empty_strings"`
-	AlredyExist    string `mapstructure:"already_exist"`
+	AlreadyExist   string `mapstructure:"already_exist"`
 	DoesntWork     string `mapstructure:"dosnt_work"`
 }
 

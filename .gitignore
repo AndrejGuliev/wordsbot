@@ -1,3 +1,4 @@
 .env
 
 .bin
+pkg\storage\mysql\mysql_test.go
